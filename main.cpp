@@ -3,11 +3,12 @@
 #include <random>
 #include <algorithm>
 
+
 #include <curl/curl.h>
 #include <jsoncpp/json/json.h>
 
 
-std::string GenerateRandomCards(int amount)
+std::string generateRandomCards(int amount)
 {
     std::vector<std::string> selectedCards;
     std::vector<std::string> cards = {
@@ -67,14 +68,15 @@ size_t write_callback(void *contents, size_t size, size_t nmemb, std::string *ou
 std::string generate_text(const std::string& prompt, const std::string& model_id) {
     CURL *curl;
     CURLcode res;
+    std::string answer = "";
     std::string readBuffer;
-    std::string continue_prompt = "continue";
+
     curl = curl_easy_init();
     if (curl) {
         std::string url = "https://api-inference.huggingface.co/models/" + model_id;
         curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
         curl_easy_setopt(curl, CURLOPT_POST, 1L);
-        
+
         // Set request headers
         struct curl_slist *headers = NULL;
         headers = curl_slist_append(headers, "Content-Type: application/json");
@@ -91,15 +93,17 @@ std::string generate_text(const std::string& prompt, const std::string& model_id
         Json::StreamWriterBuilder writer;
         std::string json_data = Json::writeString(writer, root);
         curl_easy_setopt(curl, CURLOPT_POSTFIELDS, json_data.c_str());
+        
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
-
+        
         res = curl_easy_perform(curl);
-
-
         /* Check for errors */
         if (res != CURLE_OK) {
             std::cerr << "curl_easy_perform() failed: " << curl_easy_strerror(res) << std::endl;
         }
+
+        //Json::Value json_bufer(readBuffer);
+        //answer = json_bufer["generated_text"];
 
         /* Clean up */
         curl_slist_free_all(headers);
@@ -116,24 +120,25 @@ int main()
     std::cout << "Enter a question: ";
     std::getline(std::cin, question);
 
-    std::string prompt = "You're a tarot card fortune teller with a lot of experience.\
-                          A client wants to ask you a question. You have to answer the question based solely on the cards you've been dealt.\ 
-                          You use 5 Card Tarot Spread. They ask you: " + question + ".\
-                          The cards are: " + GenerateRandomCards(5) +". Make a prediction based on the cards you've been dealt. Role play only yourself.\\n\\nTarot card future teller: ";
+    std::string cards = generateRandomCards(5);
+    std::string prompt = "You're a tarot card fortune teller with a lot of experience.A client wants to ask you a question. You have to answer the question based solely on the cards you've been dealt. You use 5 Card Tarot Spread. They ask you: " + question + "The cards are: " + cards +". Make a prediction based on the cards you've been dealt. Role play only yourself.\\n\\nTarot card teller: ";
     
     std::string model_id = "mistralai/Mistral-7B-Instruct-v0.2";
 
     // Call the function to generate text based on the prompt
     std::string generated_text = generate_text(prompt, model_id);
-    std::string answer = "";
+
 
     // Check if the response is not empty
     if (generated_text.empty()) {
         // Print an error message if the response is empty
         std::cerr << "Failed to generate text." << std::endl;
     }
+    generated_text = generated_text.substr(prompt.size()+3);
+    generated_text = generated_text.substr(0, generated_text.size()-3);
     
     // Print out the generated text
+    std::cout << cards << std::endl;
     std::cout << "Generated Text:" << std::endl;
     std::cout << generated_text << std::endl;
     
